@@ -1,0 +1,35 @@
+services:
+  # ==================== ATLANTIC ORDERS API ====================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: atlantic-orders-api
+    environment:
+      # Database - Uses in-memory database by default
+      # To use SQL Server, set UseInMemoryDatabase to "false" and configure ConnectionStrings__DefaultConnection
+      UseInMemoryDatabase: "true"
+      
+      # JWT Configuration
+      Jwt__SecretKey: "tu-clave-secreta-super-larga-de-al-menos-32-caracteres-para-hs256-produccion"
+      Jwt__Issuer: "AtlanticOrdersApi"
+      Jwt__Audience: "AtlanticOrdersApp"
+      Jwt__ExpirationMinutes: "60"
+      
+      # ASP.NET Core
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ASPNETCORE_URLS: "http://+:8080"
+      
+      # Logging
+      Logging__LogLevel__Default: "Information"
+      Logging__LogLevel__Microsoft_EntityFrameworkCore: "Warning"
+      Logging__LogLevel__Microsoft_AspNetCore: "Information"
+    
+    ports:
+      - "8080:8080"
+    
+    restart: unless-stopped
+
+networks:
+  atlantic-network:
+    driver: bridge

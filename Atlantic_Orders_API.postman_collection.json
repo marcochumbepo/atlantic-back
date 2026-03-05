@@ -1,0 +1,200 @@
+{
+  "info": {
+    "name": "Atlantic Orders API",
+    "description": "Colección de endpoints para la API de Atlantic Orders - Gestión de Pedidos con Autenticación JWT",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["health"]
+            },
+            "description": "Verifica que la API esté disponible y funcionando correctamente.\n\n**Respuesta esperada:**\n```json\n{\n  \"status\": \"Healthy\",\n  \"timestamp\": \"2026-03-04T22:38:11.108854Z\",\n  \"service\": \"AtlanticOrdersApi\"\n}\n```"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"admin@example.com\",\n  \"contrasena\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Realiza login y obtiene un token JWT para autenticación.\n\n**Body:**\n```json\n{\n  \"usuario\": \"admin@example.com\",\n  \"contrasena\": \"admin123\"\n}\n```\n\n**Usuarios disponibles de prueba:**\n- usuario: `admin@example.com`, contraseña: `admin123`\n- usuario: `demo@example.com`, contraseña: `password123`\n\n**Respuesta exitosa (200):**\n```json\n{\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"expiresIn\": 3600\n}\n```\n\n**Error - Credenciales inválidas (401):**\n```json\n{\n  \"error\": \"Credenciales inválidas.\"\n}\n```"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Pedidos",
+      "item": [
+        {
+          "name": "Obtener todos los pedidos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "description": "Token JWT obtenido del login"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/pedidos",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "pedidos"]
+            },
+            "description": "Obtiene la lista de todos los pedidos activos.\n\n**Headers requeridos:**\n- `Authorization: Bearer {token}` (requerido)\n\n**Respuesta (200):**\n```json\n[\n  {\n    \"id\": 1,\n    \"numeroPedido\": \"PED-001\",\n    \"cliente\": \"Acme Corp\",\n    \"fecha\": \"2026-03-04T00:00:00\",\n    \"total\": 1500.00,\n    \"estado\": \"Completado\"\n  },\n  {\n    \"id\": 2,\n    \"numeroPedido\": \"PED-002\",\n    \"cliente\": \"TechHub\",\n    \"fecha\": \"2026-03-04T00:00:00\",\n    \"total\": 2500.00,\n    \"estado\": \"Pendiente\"\n  }\n]\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener pedido por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/pedidos/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "pedidos", "1"]
+            },
+            "description": "Obtiene un pedido específico por su ID.\n\n**Path Parameters:**\n- `id` (int): ID del pedido a obtener\n\n**Respuesta exitosa (200):**\n```json\n{\n  \"id\": 1,\n  \"numeroPedido\": \"PED-001\",\n  \"cliente\": \"Acme Corp\",\n  \"fecha\": \"2026-03-04T00:00:00\",\n  \"total\": 1500.00,\n  \"estado\": \"Completado\"\n}\n```\n\n**Error - Pedido no encontrado (404):**\n```json\n{\n  \"mensaje\": \"El pedido con ID 999 no existe.\"\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Crear pedido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeroPedido\": \"PED-003\",\n  \"cliente\": \"Nueva Empresa\",\n  \"fecha\": \"2026-03-04T10:30:00\",\n  \"total\": 3500.50,\n  \"estado\": \"Pendiente\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/pedidos",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "pedidos"]
+            },
+            "description": "Crea un nuevo pedido.\n\n**Body:**\n```json\n{\n  \"numeroPedido\": \"PED-003\",\n  \"cliente\": \"Nueva Empresa\",\n  \"fecha\": \"2026-03-04T10:30:00\",\n  \"total\": 3500.50,\n  \"estado\": \"Pendiente\"\n}\n```\n\n**Campos:**\n- `numeroPedido` (string): Número único del pedido\n- `cliente` (string): Nombre del cliente\n- `fecha` (datetime): Fecha del pedido\n- `total` (decimal): Monto total del pedido\n- `estado` (string): Estado del pedido (ej: Pendiente, Completado, Cancelado)\n\n**Respuesta exitosa (201):**\n```json\n{\n  \"id\": 3,\n  \"numeroPedido\": \"PED-003\",\n  \"cliente\": \"Nueva Empresa\",\n  \"fecha\": \"2026-03-04T10:30:00\",\n  \"total\": 3500.50,\n  \"estado\": \"Pendiente\"\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Actualizar pedido",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 1,\n  \"numeroPedido\": \"PED-001\",\n  \"cliente\": \"Acme Corp Actualizada\",\n  \"fecha\": \"2026-03-04T00:00:00\",\n  \"total\": 1600.00,\n  \"estado\": \"Completado\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/pedidos/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "pedidos", "1"]
+            },
+            "description": "Actualiza un pedido existente.\n\n**Path Parameters:**\n- `id` (int): ID del pedido a actualizar\n\n**Body:**\n```json\n{\n  \"id\": 1,\n  \"numeroPedido\": \"PED-001\",\n  \"cliente\": \"Acme Corp Actualizada\",\n  \"fecha\": \"2026-03-04T00:00:00\",\n  \"total\": 1600.00,\n  \"estado\": \"Completado\"\n}\n```\n\n**Nota:** El ID en la URL debe coincidir con el ID en el body.\n\n**Respuesta exitosa (200):**\n```json\n{\n  \"id\": 1,\n  \"numeroPedido\": \"PED-001\",\n  \"cliente\": \"Acme Corp Actualizada\",\n  \"fecha\": \"2026-03-04T00:00:00\",\n  \"total\": 1600.00,\n  \"estado\": \"Completado\"\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Eliminar pedido",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/api/pedidos/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["api", "pedidos", "1"]
+            },
+            "description": "Elimina un pedido (soft delete).\n\n**Path Parameters:**\n- `id` (int): ID del pedido a eliminar\n\n**Respuesta exitosa (204):**\nSin contenido\n\n**Error - Pedido no encontrado (404):**\n```json\n{\n  \"mensaje\": \"El pedido con ID 999 no existe.\"\n}\n```"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "token",
+      "value": "",
+      "description": "Token JWT obtenido del endpoint de login. Copiar el token de la respuesta de login aquí."
+    },
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "description": "URL base de la API"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning",
+      "Microsoft.EntityFrameworkCore": "Warning",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "UseInMemoryDatabase": false,
+  "ConnectionStrings": {
+    "DefaultConnection": "${DATABASE_CONNECTION}"
+  },
+  "Jwt": {
+    "SecretKey": "${JWT_SECRET_KEY}",
+    "Issuer": "AtlanticOrdersApi",
+    "Audience": "AtlanticOrdersApp",
+    "ExpirationMinutes": 60,
+    "RefreshTokenExpirationDays": 7,
+    "CookieName": "X-Access-Token",
+    "RefreshCookieName": "X-Refresh-Token",
+    "CookieSecureFlag": true,
+    "CookieSameSite": "Strict"
+  },
+  "RateLimiting": {
+    "EnableRateLimiting": true,
+    "IpRateLimitPolicies": {
+      "IpWhitelist": [],
+      "ClientWhitelist": [],
+      "GeneralRule": {
+        "Endpoint": "*",
+        "Period": "1m",
+        "Limit": 100
+      },
+      "LoginRule": {
+        "Endpoint": "*:/api/auth/login",
+        "Period": "1m",
+        "Limit": 5
+      }
+    }
+  },
+  "CorsOrigins": [
+    "https://your-production-domain.com",
+    "https://www.your-production-domain.com"
+  ]
+}

@@ -20,9 +20,9 @@
   // IMPORTANTE: En producción, usar variable de entorno: JWT_SECRET_KEY
   // o dotnet user-secrets set "Jwt:SecretKey" "tu-clave-segura"
   "Jwt": {
-    // Para desarrollo: "dev-secret-key-minimo-32-caracteres!"
+    // Para desarrollo: cualquier clave de 32+ caracteres
     // Para producción: configurar vía variable de entorno JWT_SECRET_KEY
-    "SecretKey": "dev-secret-key-minimo-32-caracteres!",
+    "SecretKey": "CAMBIAR_ESTE_VALOR_EN_PRODUCCION_MINIMO_32_CARACTERES",
     "Issuer": "AtlanticOrdersApi",
     "Audience": "AtlanticOrdersApp",
     "ExpirationMinutes": 60,
@@ -48,9 +48,9 @@
         "Endpoint": "*:/api/auth/login",
         "Period": "1m",
         "Limit": 5
-      },
-      "RefreshRule": {
-        "Endpoint": "*:/api/auth/refresh",
+     Rule": {
+        "Endpoint": "* },
+      "Refresh:/api/auth/refresh",
         "Period": "1m",
         "Limit": 30
       }

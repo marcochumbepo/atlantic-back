@@ -77,9 +77,20 @@ Thumbs.db
 *.log
 logs/
 
-# Environment files (keep example)
+# Environment files
 .env
 !.env.example
+.env.template
+
+# appsettings - NO subir a git (contienen configuración sensible)
+# Usar appsettings.json.example como plantilla
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+appsettings.*.json
+# EXCEPTO el archivo de ejemplo
+!appsettings.json.example
 
 # Docker
 *.dockerignore

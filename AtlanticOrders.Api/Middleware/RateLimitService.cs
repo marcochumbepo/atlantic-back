@@ -11,129 +11,159 @@ public interface IRateLimitService
     /// <summary>
     /// Verifica si una solicitud está permitida según las políticas de rate limiting.
     /// </summary>
-    /// <param name="clientId">Identificador único del cliente (IP o User-Agent).</param>
-    /// <param name="endpoint">Endpoint que se intenta acceder.</param>
-    /// <returns>True si la solicitud está permitida, false si excede el límite.</returns>
     bool IsRequestAllowed(string clientId, string endpoint);
 
     /// <summary>
     /// Obtiene información sobre límites disponibles para un cliente.
     /// </summary>
-    /// <param name="clientId">Identificador del cliente.</param>
-    /// <param name="endpoint">Endpoint consultado.</param>
-    /// <returns>Tupla con (límite total, intentos restantes, próximo reset en minutos).</returns>
     (int Limit, int Remaining, int ResetInSeconds) GetRateLimitInfo(string clientId, string endpoint);
 }
 
 /// <summary>
 /// Implementación de Rate Limiting basada en memoria.
-/// Almacena intentos en un diccionario en memoria con expiración temporal.
+/// Lee la configuración desde appsettings.json
 /// </summary>
 public class InMemoryRateLimitService : IRateLimitService
 {
     private readonly ConcurrentDictionary<string, RateLimitEntry> _requestCounts;
-    private readonly IConfiguration _configuration;
     private readonly ILogger<InMemoryRateLimitService> _logger;
 
-    // Configuración de límites por endpoint
-    private readonly int _generalLimit = 100; // Solicitudes por minuto (general)
-    private readonly int _loginLimit = 5;      // Solicitudes por minuto (login)
-    private readonly int _windowMinutes = 1;   // Ventana de tiempo
+    // Límites configurables desde appsettings.json
+    private int _generalLimit = 100;
+    private int _loginLimit = 5;
+    private int _refreshLimit = 30;
+    private int _windowSeconds = 60;
 
-    public InMemoryRateLimitService(
-        IConfiguration configuration,
-        ILogger<InMemoryRateLimitService> logger)
+    public InMemoryRateLimitService(IConfiguration configuration, ILogger<InMemoryRateLimitService> logger)
     {
         _requestCounts = new ConcurrentDictionary<string, RateLimitEntry>();
-        _configuration = configuration;
         _logger = logger;
 
-        // Intentar leer los límites desde configuración
-        var rateLimitConfig = _configuration.GetSection("RateLimiting");
-        if (rateLimitConfig.Exists())
+        LoadConfiguration(configuration);
+    }
+
+    /// <summary>
+    /// Carga la configuración desde appsettings.json
+    /// </summary>
+    private void LoadConfiguration(IConfiguration configuration)
+    {
+        try
         {
-            var loginRule = rateLimitConfig.GetSection("IpRateLimitPolicies:LoginRule");
+            var rateLimitConfig = configuration.GetSection("RateLimiting");
+            if (!rateLimitConfig.Exists())
+            {
+                _logger.LogWarning("RateLimiting section not found in configuration. Using default values.");
+                return;
+            }
+
+            var policies = rateLimitConfig.GetSection("IpRateLimitPolicies");
+            if (!policies.Exists())
+            {
+                _logger.LogWarning("IpRateLimitPolicies section not found. Using default values.");
+                return;
+            }
+
+            // Cargar GeneralRule
+            var generalRule = policies.GetSection("GeneralRule");
+            if (generalRule.Exists())
+            {
+                if (int.TryParse(generalRule["Limit"], out var limit))
+                    _generalLimit = limit;
+                if (int.TryParse(generalRule["Period"]?.Replace("m", ""), out var period))
+                    _windowSeconds = period * 60;
+            }
+
+            // Cargar LoginRule
+            var loginRule = policies.GetSection("LoginRule");
             if (loginRule.Exists())
             {
-                if (int.TryParse(loginRule["Limit"], out var loginLim))
-                    _loginLimit = loginLim;
+                if (int.TryParse(loginRule["Limit"], out var limit))
+                    _loginLimit = limit;
             }
+
+            // Cargar RefreshRule
+            var refreshRule = policies.GetSection("RefreshRule");
+            if (refreshRule.Exists())
+            {
+                if (int.TryParse(refreshRule["Limit"], out var limit))
+                    _refreshLimit = limit;
+            }
+
+            _logger.LogInformation(
+                "Rate limiting configured - General: {General}, Login: {Login}, Refresh: {Refresh}, Window: {Window}s",
+                _generalLimit, _loginLimit, _refreshLimit, _windowSeconds);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading rate limiting configuration. Using default values.");
         }
     }
 
     /// <summary>
-    /// Verifica si un cliente puede realizar una solicitud.
-    /// Cada cliente tiene su propio contador por endpoint.
+    /// Determina el límite basado en el endpoint
     /// </summary>
+    private int GetLimitForEndpoint(string endpoint)
+    {
+        if (endpoint.Contains("login", StringComparison.OrdinalIgnoreCase))
+            return _loginLimit;
+        
+        if (endpoint.Contains("refresh", StringComparison.OrdinalIgnoreCase))
+            return _refreshLimit;
+        
+        return _generalLimit;
+    }
+
     public bool IsRequestAllowed(string clientId, string endpoint)
     {
         if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(endpoint))
-            return true; // Si no hay ID de cliente, permitir
+            return true;
 
         var key = $"{clientId}:{endpoint}";
         var now = DateTime.UtcNow;
+        var limit = GetLimitForEndpoint(endpoint);
 
-        // Determinar el límite basado en el endpoint
-        var limit = endpoint.Contains("login", StringComparison.OrdinalIgnoreCase) 
-            ? _loginLimit 
-            : _generalLimit;
-
-        // Obtener o crear entrada de rate limit
         var entry = _requestCounts.AddOrUpdate(
             key,
-            new RateLimitEntry { Count = 1, ResetTime = now.AddMinutes(_windowMinutes) },
+            new RateLimitEntry { Count = 1, ResetTime = now.AddSeconds(_windowSeconds) },
             (k, existing) =>
             {
-                // Si la ventana ha expirado, resetear
                 if (now >= existing.ResetTime)
                 {
-                    return new RateLimitEntry { Count = 1, ResetTime = now.AddMinutes(_windowMinutes) };
+                    return new RateLimitEntry { Count = 1, ResetTime = now.AddSeconds(_windowSeconds) };
                 }
-
-                // Incrementar contador
                 existing.Count++;
                 return existing;
-            }
-        );
+            });
 
-        // Verificar si se excedió el límite
         if (entry.Count > limit)
         {
             _logger.LogWarning(
-                "Rate limit exceeded for client {ClientId} on endpoint {Endpoint}. " +
-                "Limit: {Limit}, Count: {Count}",
+                "Rate limit exceeded for client {ClientId} on endpoint {Endpoint}. Limit: {Limit}, Count: {Count}",
                 clientId, endpoint, limit, entry.Count);
-
             return false;
         }
 
         return true;
     }
 
-    /// <summary>
-    /// Obtiene información del rate limit para un cliente y endpoint.
-    /// </summary>
     public (int Limit, int Remaining, int ResetInSeconds) GetRateLimitInfo(string clientId, string endpoint)
     {
         var key = $"{clientId}:{endpoint}";
-        var limit = endpoint.Contains("login", StringComparison.OrdinalIgnoreCase) 
-            ? _loginLimit 
-            : _generalLimit;
+        var limit = GetLimitForEndpoint(endpoint);
 
         if (_requestCounts.TryGetValue(key, out var entry))
         {
             var now = DateTime.UtcNow;
             var remaining = Math.Max(0, limit - entry.Count);
             var resetInSeconds = Math.Max(0, (int)(entry.ResetTime - now).TotalSeconds);
-
             return (limit, remaining, resetInSeconds);
         }
 
-        return (limit, limit, _windowMinutes * 60);
+        return (limit, limit, _windowSeconds);
     }
 
     /// <summary>
-    /// Limpia entradas expiradas de la memoria periodicamente.
+    /// Limpia entradas expiradas de la memoria periódicamente.
     /// </summary>
     public void CleanupExpiredEntries()
     {
@@ -149,9 +179,6 @@ public class InMemoryRateLimitService : IRateLimitService
         }
     }
 
-    /// <summary>
-    /// Entrada de rate limit almacenada en memoria.
-    /// </summary>
     private class RateLimitEntry
     {
         public int Count { get; set; }

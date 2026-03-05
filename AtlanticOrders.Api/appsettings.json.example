@@ -48,9 +48,9 @@
         "Endpoint": "*:/api/auth/login",
         "Period": "1m",
         "Limit": 5
-     Rule": {
-        "Endpoint": "* },
-      "Refresh:/api/auth/refresh",
+      },
+      "RefreshRule": {
+        "Endpoint": "*:/api/auth/refresh",
         "Period": "1m",
         "Limit": 30
       }
